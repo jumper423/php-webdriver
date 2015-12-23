@@ -251,6 +251,7 @@ class HttpCommandExecutor implements WebDriverCommandExecutor
         curl_setopt($this->curl, CURLOPT_CONNECTTIMEOUT, 60);
 
         $errorCount = 1;
+        $error = null;
         do {
             if ($errorCount == 10) {
                 $msg = sprintf(
@@ -264,7 +265,8 @@ class HttpCommandExecutor implements WebDriverCommandExecutor
             }
             $raw_results = trim(curl_exec($this->curl));
             $errorCount++;
-        } while ($error = curl_error($this->curl));
+            $error = curl_error($this->curl);
+        } while ($error);
 
         $results = json_decode($raw_results, true);
 
