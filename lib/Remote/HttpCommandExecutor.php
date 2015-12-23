@@ -250,13 +250,16 @@ class HttpCommandExecutor implements WebDriverCommandExecutor
         curl_setopt($this->curl, CURLOPT_TIMEOUT, 60);
         curl_setopt($this->curl, CURLOPT_CONNECTTIMEOUT, 60);
 
-        $errorCount = 0;
+        $errorCount = 1;
         do {
+            if ($errorCount == 10) {
+                break;
+            }
             $raw_results = trim(curl_exec($this->curl));
             $errorCount++;
-        } while ($error = curl_error($this->curl) && $errorCount < 10);
+        } while ($error = curl_error($this->curl));
 
-        if ($errorCount > 1) {
+        if ($errorCount == 10) {
             $msg = sprintf(
                 'Curl error thrown for http %s to %s',
                 $http_method,
