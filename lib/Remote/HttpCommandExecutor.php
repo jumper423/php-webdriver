@@ -252,52 +252,56 @@ class HttpCommandExecutor implements WebDriverCommandExecutor
 
         $errorCount = 1;
         $error = null;
+        $errorCount13 = 0;
         do {
-            if ($errorCount == 10) {
-                $msg = sprintf(
-                    'Curl error thrown for http %s to %s',
-                    $http_method,
-                    $url);
-                if ($params && is_array($params)) {
-                    $msg .= sprintf(' with params: %s', json_encode($params));
+            $errorCount13++;
+            do {
+                if ($errorCount == 10) {
+                    $msg = sprintf(
+                        'Curl error thrown for http %s to %s',
+                        $http_method,
+                        $url);
+                    if ($params && is_array($params)) {
+                        $msg .= sprintf(' with params: %s', json_encode($params));
+                    }
+                    WebDriverException::throwException(-1, $msg . "\n\n" . $error, array());
                 }
-                WebDriverException::throwException(-1, $msg . "\n\n" . $error, array());
+                $raw_results = trim(curl_exec($this->curl));
+                $errorCount++;
+                $error = curl_error($this->curl);
+            } while ($error);
+
+            $results = json_decode($raw_results, true);
+
+            if ($results === null && json_last_error() !== JSON_ERROR_NONE) {
+                throw new WebDriverException(
+                    sprintf(
+                        "JSON decoding of remote response failed.\n" .
+                        "Error code: %d\n" .
+                        "The response: '%s'\n",
+                        json_last_error(),
+                        $raw_results
+                    )
+                );
             }
-            $raw_results = trim(curl_exec($this->curl));
-            $errorCount++;
-            $error = curl_error($this->curl);
-        } while ($error);
 
-        $results = json_decode($raw_results, true);
+            $value = null;
+            if (is_array($results) && array_key_exists('value', $results)) {
+                $value = $results['value'];
+            }
 
-        if ($results === null && json_last_error() !== JSON_ERROR_NONE) {
-            throw new WebDriverException(
-                sprintf(
-                    "JSON decoding of remote response failed.\n" .
-                    "Error code: %d\n" .
-                    "The response: '%s'\n",
-                    json_last_error(),
-                    $raw_results
-                )
-            );
-        }
+            $message = null;
+            if (is_array($value) && array_key_exists('message', $value)) {
+                $message = $value['message'];
+            }
 
-        $value = null;
-        if (is_array($results) && array_key_exists('value', $results)) {
-            $value = $results['value'];
-        }
+            $sessionId = null;
+            if (is_array($results) && array_key_exists('sessionId', $results)) {
+                $sessionId = $results['sessionId'];
+            }
 
-        $message = null;
-        if (is_array($value) && array_key_exists('message', $value)) {
-            $message = $value['message'];
-        }
-
-        $sessionId = null;
-        if (is_array($results) && array_key_exists('sessionId', $results)) {
-            $sessionId = $results['sessionId'];
-        }
-
-        $status = isset($results['status']) ? $results['status'] : 0;
+            $status = isset($results['status']) ? $results['status'] : 0;
+        } while ($status == 13 && $errorCount13 < 10);
         WebDriverException::throwException($status, $message, $results);
 
         $response = new WebDriverResponse($sessionId);
