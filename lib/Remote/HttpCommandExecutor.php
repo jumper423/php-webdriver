@@ -301,7 +301,7 @@ class HttpCommandExecutor implements WebDriverCommandExecutor
             }
 
             $status = isset($results['status']) ? $results['status'] : 0;
-        } while ($status == 13 && $errorCount13 < 4);
+        } while ($status == 13 && !$message && $errorCount13 < 4);
         WebDriverException::throwException($status, $message, $results);
 
         $response = new WebDriverResponse($sessionId);
